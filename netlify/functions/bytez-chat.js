@@ -1,64 +1,47 @@
-// netlify/functions/bytez-chat.js
-exports.handler = async (event, context) => {
-  // CORS headers
+exports.handler = async (event) => {
+  console.log('Function called at:', new Date().toISOString());
+  
   const headers = {
     'Access-Control-Allow-Origin': '*',
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Methods': 'POST, GET, OPTIONS'
   };
 
-  // Handle OPTIONS request
+  // Handle OPTIONS request for CORS
   if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers, body: '' };
+    return {
+      statusCode: 200,
+      headers,
+      body: ''
+    };
   }
 
   try {
-    // Parse request
-    const { messages } = JSON.parse(event.body);
+    console.log('Event body:', event.body);
     
-    // Get API key from environment
-    const apiKey = process.env.BYTEZ_API_KEY;
-    
-    if (!apiKey) {
-      throw new Error('API key not configured');
-    }
-    
-    // Call Bytez API directly (without SDK for now)
-    const response = await fetch('https://api.bytez.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-5.1',
-        messages: messages,
-        temperature: 0.7,
-        max_tokens: 500
-      })
-    });
-    
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(data.error?.message || 'API request failed');
-    }
-    
+    // Simple response
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
         success: true,
-        response: data.choices[0].message.content
+        message: 'Function is working!',
+        timestamp: new Date().toISOString(),
+        method: event.httpMethod,
+        hasBody: !!event.body
       })
     };
     
   } catch (error) {
+    console.error('Error:', error);
+    
     return {
       statusCode: 500,
       headers,
       body: JSON.stringify({
         success: false,
-        error: error.message
+        error: error.message,
+        timestamp: new Date().toISOString()
       })
     };
   }
