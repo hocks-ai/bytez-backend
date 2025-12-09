@@ -1,7 +1,7 @@
 {
-  "name": "bytez-chat-backend",
+  "name": "bytez-backend",
   "version": "1.0.0",
   "dependencies": {
-    "bytez.js": "latest"
+    "bytez.js": "^1.0.0"
   }
 }
