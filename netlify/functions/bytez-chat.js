@@ -1,9 +1,9 @@
+const Bytez = require("bytez.js");
+
 exports.handler = async (event, context) => {
-  console.log('Function called:', {
+  console.log('Bytez Function called:', {
     method: event.httpMethod,
-    path: event.path,
-    body: event.body,
-    headers: event.headers
+    timestamp: new Date().toISOString()
   });
 
   // CORS headers
@@ -11,7 +11,7 @@ exports.handler = async (event, context) => {
     'Access-Control-Allow-Origin': '*',
     'Content-Type': 'application/json',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS, PUT, DELETE'
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
   };
 
   // Handle CORS preflight
@@ -24,62 +24,104 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    // Parse request body for POST requests
-    let parsedBody = {};
-    if (event.body) {
-      try {
-        parsedBody = JSON.parse(event.body);
-      } catch (parseError) {
-        console.log('JSON parse error:', parseError);
-        parsedBody = {};
-      }
-    }
-
-    const { messages } = parsedBody;
-
-    // Handle GET request
+    // Handle GET request (for testing)
     if (event.httpMethod === 'GET') {
       return {
         statusCode: 200,
         headers,
         body: JSON.stringify({
           success: true,
-          message: 'Function is working! Use POST for AI chat.',
-          timestamp: new Date().toISOString(),
-          method: 'GET'
+          message: 'Bytez AI Function is running!',
+          status: 'Ready to process requests',
+          timestamp: new Date().toISOString()
         })
       };
     }
 
-    // Handle POST request
+    // Handle POST request (main AI functionality)
     if (event.httpMethod === 'POST') {
-      // Check if messages exist
-      if (!messages || !Array.isArray(messages)) {
+      // Parse request body
+      let parsedBody = {};
+      try {
+        parsedBody = JSON.parse(event.body || '{}');
+      } catch (parseError) {
         return {
           statusCode: 400,
           headers,
           body: JSON.stringify({
             success: false,
-            error: 'Missing or invalid messages array',
-            received: messages
+            error: 'Invalid JSON in request body'
           })
         };
       }
 
-      // Simple response for testing
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({
-          success: true,
-          message: 'POST request received successfully!',
-          receivedMessages: messages,
-          messageCount: messages.length,
-          timestamp: new Date().toISOString(),
-          method: 'POST',
-          nextStep: 'Ready to integrate Bytez API'
-        })
-      };
+      const { messages } = parsedBody;
+
+      // Validate messages
+      if (!messages || !Array.isArray(messages) || messages.length === 0) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({
+            success: false,
+            error: 'Messages array is required and should not be empty'
+          })
+        };
+      }
+
+      // Check API key
+      const apiKey = process.env.BYTEZ_API_KEY;
+      if (!apiKey) {
+        return {
+          statusCode: 500,
+          headers,
+          body: JSON.stringify({
+            success: false,
+            error: 'API key not configured on server'
+          })
+        };
+      }
+
+      console.log('Calling Bytez API with', messages.length, 'messages');
+
+      try {
+        // Initialize Bytez SDK
+        const sdk = new Bytez(apiKey);
+        const model = sdk.model("openai/gpt-5.1");
+        
+        // Call Bytez API
+        const { error, output } = await model.run(messages);
+        
+        if (error) {
+          throw new Error(`Bytez API Error: ${error}`);
+        }
+
+        console.log('Bytez API response received successfully');
+
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({
+            success: true,
+            response: output,
+            model: 'gpt-5.1',
+            timestamp: new Date().toISOString()
+          })
+        };
+
+      } catch (apiError) {
+        console.error('Bytez API Error:', apiError);
+        
+        return {
+          statusCode: 500,
+          headers,
+          body: JSON.stringify({
+            success: false,
+            error: apiError.message,
+            note: 'Bytez API call failed'
+          })
+        };
+      }
     }
 
     // Handle other methods
@@ -101,7 +143,7 @@ exports.handler = async (event, context) => {
       body: JSON.stringify({
         success: false,
         error: error.message,
-        stack: error.stack
+        timestamp: new Date().toISOString()
       })
     };
   }
