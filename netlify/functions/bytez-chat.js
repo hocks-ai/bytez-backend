@@ -1,7 +1,6 @@
 const Bytez = require("bytez.js");
 
-exports.handler = async (event, context) => {
-  // CORS headers
+exports.handler = async (event) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Content-Type': 'application/json'
@@ -12,7 +11,6 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    // Handle GET request
     if (event.httpMethod === 'GET') {
       return {
         statusCode: 200,
@@ -24,7 +22,6 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Handle POST request
     if (event.httpMethod === 'POST') {
       const { messages } = JSON.parse(event.body || '{}');
       
@@ -37,16 +34,11 @@ exports.handler = async (event, context) => {
         throw new Error('API key not configured');
       }
 
-      // Initialize Bytez SDK
       const sdk = new Bytez(apiKey);
       const model = sdk.model("openai/gpt-5.1");
-      
-      // Send input to model
       const { error, output } = await model.run(messages);
       
-      if (error) {
-        throw new Error(`Bytez API Error: ${error}`);
-      }
+      if (error) throw new Error(error);
       
       return {
         statusCode: 200,
@@ -66,7 +58,6 @@ exports.handler = async (event, context) => {
 
   } catch (error) {
     console.error('Error:', error);
-    
     return {
       statusCode: 500,
       headers,
